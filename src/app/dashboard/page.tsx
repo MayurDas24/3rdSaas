@@ -53,6 +53,7 @@ export default function VentureFlowPage() {
   };
 
   const handleSignOut = async () => {
+    if (!auth) return;
     try {
       await signOut(auth);
       router.push('/login');
