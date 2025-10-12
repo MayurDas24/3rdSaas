@@ -1,79 +1,129 @@
-"use client";
+'use client';
 
-import React, { useState } from 'react';
-import { Calculator, TrendingUp, DollarSign, Target } from 'lucide-react';
-import { initialScenarios, initialBenchmarks, initialWaterfall } from '@/app/data';
-import type { Scenario, Benchmark, Waterfall } from '@/lib/types';
-import Header from '@/components/venture-flow/header';
-import ScenarioModeling from '@/components/venture-flow/scenario-modeling';
-import Benchmarking from '@/components/venture-flow/benchmarking';
-import WaterfallAnalysis from '@/components/venture-flow/waterfall-analysis';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ArrowRight, BarChart, CheckCircle, TrendingUp } from 'lucide-react';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
-const TABS = [
-  { id: 'scenarios', label: 'Scenario Modeling', icon: TrendingUp },
-  { id: 'benchmarking', label: 'Benchmarking', icon: Target },
-  { id: 'waterfall', label: 'Waterfall Distribution', icon: DollarSign }
-];
+export default function LandingPage() {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
-export default function VentureFlowPage() {
-  const [scenarios, setScenarios] = useState<Scenario[]>(initialScenarios);
-  const [benchmarks, setBenchmarks] = useState<Benchmark[]>(initialBenchmarks);
-  const [waterfall, setWaterfall] = useState<Waterfall[]>(initialWaterfall);
-  const [selectedScenario, setSelectedScenario] = useState<string>('Base Case');
+  useEffect(() => {
+    if (user && !isUserLoading) {
+      router.push('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
 
-  const updateScenario = (index: number, field: keyof Scenario, value: string) => {
-    const newScenarios = [...scenarios];
-    const parsedValue = field === 'scenario' ? value : parseFloat(value) || 0;
-    (newScenarios[index] as any)[field] = parsedValue;
-    setScenarios(newScenarios);
-  };
+  if (isUserLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
-  const updateBenchmark = (index: number, field: keyof Benchmark, value: string) => {
-    const newBenchmarks = [...benchmarks];
-    const parsedValue = field === 'metric' ? value : parseFloat(value) || 0;
-    (newBenchmarks[index] as any)[field] = parsedValue;
-    setBenchmarks(newBenchmarks);
-  };
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Header />
-        <Tabs defaultValue="scenarios" className="w-full mt-8">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 max-w-2xl mx-auto h-auto sm:h-12">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger key={tab.id} value={tab.id} className="py-2.5 gap-2 text-sm">
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-          
-          <TabsContent value="scenarios" className="mt-8">
-            <ScenarioModeling
-              scenarios={scenarios}
-              selectedScenario={selectedScenario}
-              setSelectedScenario={setSelectedScenario}
-              updateScenario={updateScenario}
-            />
-          </TabsContent>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
+          <div className="mr-4 flex items-center">
+            <BarChart className="h-6 w-6 mr-2 text-primary" />
+            <span className="font-bold">VentureFlow</span>
+          </div>
+          <div className="flex flex-1 items-center justify-end space-x-2">
+            <nav className="flex items-center">
+              <Link href="/login">
+                <Button variant="ghost">Login</Button>
+              </Link>
+              <Link href="/login">
+                <Button>Get Started</Button>
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </header>
 
-          <TabsContent value="benchmarking" className="mt-8">
-            <Benchmarking
-              benchmarks={benchmarks}
-              updateBenchmark={updateBenchmark}
-            />
-          </TabsContent>
+      {/* Hero Section */}
+      <main>
+        <section className="py-24 text-center">
+          <div className="container">
+            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
+              The Future of Fund Forecasting is Here
+            </h1>
+            <p className="mx-auto mt-4 max-w-[700px] text-lg text-muted-foreground md:text-xl">
+              VentureFlow provides institutional-grade tools for venture capitalists to model, benchmark, and visualize fund performance with unparalleled precision.
+            </p>
+            <div className="mt-8">
+              <Link href="/login">
+                <Button size="lg">
+                  Get Started for Free <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
 
-          <TabsContent value="waterfall" className="mt-8">
-            <WaterfallAnalysis waterfall={waterfall} />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </main>
+        {/* Features Section */}
+        <section className="bg-muted py-20">
+          <div className="container">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <h2 className="text-3xl font-bold font-headline">Powerful Features for Data-Driven Decisions</h2>
+              <p className="mt-2 text-muted-foreground">Everything you need to build and analyze your fund strategy.</p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-3">
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 rounded-full bg-primary/10 p-4">
+                  <TrendingUp className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold font-headline">Scenario Modeling</h3>
+                <p className="mt-2 text-muted-foreground">
+                  Input and adjust key parameters to simulate different investment outcomes.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 rounded-full bg-primary/10 p-4">
+                  <BarChart className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold font-headline">Real-time Visualization</h3>
+                <p className="mt-2 text-muted-foreground">
+                  Automatically visualize results with live-updating charts and graphs.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 rounded-full bg-primary/10 p-4">
+                  <CheckCircle className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold font-headline">Benchmark Comparison</h3>
+                <p className="mt-2 text-muted-foreground">
+                  Compare fund performance against peer medians and top quartile benchmarks.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+       {/* Footer */}
+       <footer className="border-t py-6">
+          <div className="container flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} VentureFlow. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4">
+                <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+                    Privacy Policy
+                </Link>
+                 <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+                    Terms of Service
+                </Link>
+            </div>
+          </div>
+        </footer>
+    </div>
   );
 }
