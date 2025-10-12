@@ -1,0 +1,325 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the VentureFlow platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the user."
+        },
+        "googleId": {
+          "type": "string",
+          "description": "The Google ID from the OAuth login."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name",
+        "googleId"
+      ]
+    },
+    "Fund": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Fund",
+      "type": "object",
+      "description": "Represents an investment fund.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the fund."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the fund."
+        },
+        "fundType": {
+          "type": "string",
+          "description": "Type of the fund (e.g., Seed, Venture).",
+          "format": "string"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Fund)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "fundType",
+        "userId"
+      ]
+    },
+    "Scenario": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Scenario",
+      "type": "object",
+      "description": "Represents a scenario for investment modeling.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the scenario."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the scenario (e.g., Base Case, Upside Case)."
+        },
+        "exitMultiple": {
+          "type": "number",
+          "description": "Exit multiple for the scenario."
+        },
+        "winners": {
+          "type": "number",
+          "description": "Number of winners in the scenario."
+        },
+        "neutrals": {
+          "type": "number",
+          "description": "Number of neutrals in the scenario."
+        },
+        "writeOffs": {
+          "type": "number",
+          "description": "Number of write-offs in the scenario."
+        },
+        "tvpi": {
+          "type": "number",
+          "description": "TVPI (Total Value to Paid-In Capital) for the scenario."
+        },
+        "irr": {
+          "type": "number",
+          "description": "IRR (Internal Rate of Return) for the scenario."
+        },
+        "fundId": {
+          "type": "string",
+          "description": "Reference to Fund. (Relationship: Fund 1:N Scenario)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "exitMultiple",
+        "winners",
+        "neutrals",
+        "writeOffs",
+        "tvpi",
+        "irr",
+        "fundId"
+      ]
+    },
+    "Benchmark": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Benchmark",
+      "type": "object",
+      "description": "Represents a benchmark for performance comparison.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the benchmark."
+        },
+        "metric": {
+          "type": "string",
+          "description": "Metric for the benchmark (e.g., IRR, TVPI)."
+        },
+        "fundPerformance": {
+          "type": "number",
+          "description": "Fund performance for the metric."
+        },
+        "peerMedian": {
+          "type": "number",
+          "description": "Peer median for the metric."
+        },
+        "topQuartile": {
+          "type": "number",
+          "description": "Top quartile for the metric."
+        },
+        "fundId": {
+          "type": "string",
+          "description": "Reference to Fund. (Relationship: Fund 1:N Benchmark)"
+        }
+      },
+      "required": [
+        "id",
+        "metric",
+        "fundPerformance",
+        "peerMedian",
+        "topQuartile",
+        "fundId"
+      ]
+    },
+    "WaterfallDistribution": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WaterfallDistribution",
+      "type": "object",
+      "description": "Represents a waterfall distribution for LP and GP returns.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the waterfall distribution."
+        },
+        "year": {
+          "type": "number",
+          "description": "Year of the distribution."
+        },
+        "lpDistribution": {
+          "type": "number",
+          "description": "LP (Limited Partner) distribution for the year."
+        },
+        "gpDistribution": {
+          "type": "number",
+          "description": "GP (General Partner) distribution for the year."
+        },
+        "lpCumulative": {
+          "type": "number",
+          "description": "Cumulative LP distribution up to the year."
+        },
+        "gpCumulative": {
+          "type": "number",
+          "description": "Cumulative GP distribution up to the year."
+        },
+        "fundId": {
+          "type": "string",
+          "description": "Reference to Fund. (Relationship: Fund 1:N WaterfallDistribution)"
+        }
+      },
+      "required": [
+        "id",
+        "year",
+        "lpDistribution",
+        "gpDistribution",
+        "lpCumulative",
+        "gpCumulative",
+        "fundId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Accessible only by the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/funds/{fundId}",
+        "definition": {
+          "entityName": "Fund",
+          "schema": {
+            "$ref": "#/backend/entities/Fund"
+          },
+          "description": "Stores investment fund details owned by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "fundId",
+              "description": "The unique identifier for the fund."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/funds/{fundId}/scenarios/{scenarioId}",
+        "definition": {
+          "entityName": "Scenario",
+          "schema": {
+            "$ref": "#/backend/entities/Scenario"
+          },
+          "description": "Stores investment scenarios associated with a specific fund owned by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "fundId",
+              "description": "The unique identifier for the fund."
+            },
+            {
+              "name": "scenarioId",
+              "description": "The unique identifier for the scenario."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/funds/{fundId}/benchmarks/{benchmarkId}",
+        "definition": {
+          "entityName": "Benchmark",
+          "schema": {
+            "$ref": "#/backend/entities/Benchmark"
+          },
+          "description": "Stores benchmark data for a specific fund owned by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "fundId",
+              "description": "The unique identifier for the fund."
+            },
+            {
+              "name": "benchmarkId",
+              "description": "The unique identifier for the benchmark."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/funds/{fundId}/waterfallDistributions/{waterfallDistributionId}",
+        "definition": {
+          "entityName": "WaterfallDistribution",
+          "schema": {
+            "$ref": "#/backend/entities/WaterfallDistribution"
+          },
+          "description": "Stores waterfall distribution data for a specific fund owned by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "fundId",
+              "description": "The unique identifier for the fund."
+            },
+            {
+              "name": "waterfallDistributionId",
+              "description": "The unique identifier for the waterfall distribution."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure authorization independence and facilitate secure and scalable access to application data. User-owned data is stored under the `/users/{userId}` path, establishing clear ownership. The `Fund`, `Scenario`, `Benchmark`, and `WaterfallDistribution` entities are stored as subcollections of `/users/{userId}/funds/{fundId}`, which ensures that all documents are associated with a specific user and fund. This hierarchical structure simplifies security rules based on user and fund ownership. \n\nAuthorization Independence is achieved by path-based ownership, where the existence of a document within the `/users/{userId}/funds/{fundId}` path implicitly grants access to the user. There is no reliance on `get()` calls to parent documents for authorization, enabling atomic operations. This ensures that security rules are debuggable.\n\nQAPs (Rules are not Filters) are supported by segregating user-specific data into path-based ownership, which will enable secure `list` operations for a specific user's funds, scenarios, benchmarks, and waterfall distributions. For example, listing all funds for a user involves querying the `/users/{userId}/funds` collection. With path-based ownership, security rules can easily allow listing documents under the authenticated user's path."
+  }
+}

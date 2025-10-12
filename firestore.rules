@@ -1,0 +1,103 @@
+/**
+ * @file Firebase Security Rules for VentureFlow platform.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model. Each user has a dedicated data tree under `/users/{userId}`.
+ * Only the authenticated user can access their own data, including funds, scenarios, benchmarks, and waterfall distributions.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile information.
+ * - /users/{userId}/funds/{fundId}: Stores investment fund details.
+ * - /users/{userId}/funds/{fundId}/scenarios/{scenarioId}: Stores investment scenarios.
+ * - /users/{userId}/funds/{fundId}/benchmarks/{benchmarkId}: Stores benchmark data.
+ * - /users/{userId}/funds/{fundId}/waterfallDistributions/{waterfallDistributionId}: Stores waterfall distribution data.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed to protect user privacy.
+ * - Default security posture for ambiguous relationships is strict owner-only access.
+ * - The rules are designed to avoid `get()` calls for authorization, achieving authorization independence.
+ *
+ * Denormalization for Authorization:
+ *  The `userId` field is used to authorize the user and is present in the `User`, `Fund`, `Scenario`, `Benchmark`, and `WaterfallDistribution` entities.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Defines the isSignedIn function.
+     * @path N/A
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Defines the isOwner function.
+     * @path N/A
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Enforces user-level access control. Only the authenticated user can read and write their own profile.
+     * @path /users/{userId}
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // User listing is not permitted.
+      allow create: if isSignedIn() && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && request.resource.data.id == userId;
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Enforces fund-level access control. Only the owner of the user can read and write funds.
+     * @path /users/{userId}/funds/{fundId}
+     */
+    match /users/{userId}/funds/{fundId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Enforces scenario-level access control. Only the owner of the parent fund can read and write scenarios.
+     * @path /users/{userId}/funds/{fundId}/scenarios/{scenarioId}
+     */
+    match /users/{userId}/funds/{fundId}/scenarios/{scenarioId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Enforces benchmark-level access control. Only the owner of the parent fund can read and write benchmarks.
+     * @path /users/{userId}/funds/{fundId}/benchmarks/{benchmarkId}
+     */
+    match /users/{userId}/funds/{fundId}/benchmarks/{benchmarkId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Enforces waterfallDistribution-level access control. Only the owner of the parent fund can read and write waterfallDistributions.
+     * @path /users/{userId}/funds/{fundId}/waterfallDistributions/{waterfallDistributionId}
+     */
+    match /users/{userId}/funds/{fundId}/waterfallDistributions/{waterfallDistributionId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+  }
+}
