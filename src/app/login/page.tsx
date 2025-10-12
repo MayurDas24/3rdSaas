@@ -48,7 +48,7 @@ export default function LoginPage() {
         <div className="text-center">
             <div className="flex justify-center items-center mb-4">
                 <BarChart className="h-8 w-8 mr-2 text-primary" />
-                <h1 className="text-3xl font-bold font-headline">VentureFlow</h1>
+                <h1 className="text-3xl font-bold font-headline">VC-scenario</h1>
             </div>
             <p className="text-muted-foreground">
                 Sign in to access your dashboard

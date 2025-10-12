@@ -9,7 +9,7 @@ export default function Header() {
         </div>
         <div>
           <h1 className="text-3xl md:text-4xl font-bold font-headline text-foreground">
-            VC Scenario Benchmarking Tool
+            VC-scenario Benchmarking Tool
           </h1>
           <p className="text-muted-foreground mt-1">
             Analyze investment scenarios, benchmark performance, and model distributions

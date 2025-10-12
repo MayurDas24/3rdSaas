@@ -33,7 +33,7 @@ export default function LandingPage() {
         <div className="container flex h-14 items-center">
           <div className="mr-4 flex items-center">
             <BarChart className="h-6 w-6 mr-2 text-primary" />
-            <span className="font-bold">VentureFlow</span>
+            <span className="font-bold">VC-scenario</span>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <nav className="flex items-center">
@@ -56,7 +56,7 @@ export default function LandingPage() {
               The Future of Fund Forecasting is Here
             </h1>
             <p className="mx-auto mt-4 max-w-[700px] text-lg text-muted-foreground md:text-xl">
-              VentureFlow provides institutional-grade tools for venture capitalists to model, benchmark, and visualize fund performance with unparalleled precision.
+              VC-scenario provides institutional-grade tools for venture capitalists to model, benchmark, and visualize fund performance with unparalleled precision.
             </p>
             <div className="mt-8">
               <Link href="/login">
@@ -112,7 +112,7 @@ export default function LandingPage() {
        <footer className="border-t py-6">
           <div className="container flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} VentureFlow. All rights reserved.
+              © {new Date().getFullYear()} VC-scenario. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
                 <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">

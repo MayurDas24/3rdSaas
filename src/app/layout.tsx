@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'VentureFlow',
+  title: 'VC-scenario',
   description: 'Analyze investment scenarios, benchmark performance, and model distributions',
 };
 
