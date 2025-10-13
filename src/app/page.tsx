@@ -3,29 +3,8 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, BarChart, CheckCircle, TrendingUp } from 'lucide-react';
-import { useUser } from '@/firebase';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
 export default function LandingPage() {
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (user && !isUserLoading) {
-      router.push('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
-
-  if (isUserLoading || user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -37,11 +16,8 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <nav className="flex items-center">
-              <Link href="/login">
-                <Button variant="ghost">Login</Button>
-              </Link>
-              <Link href="/login">
-                <Button>Get Started</Button>
+              <Link href="/dashboard">
+                <Button>Go to Dashboard</Button>
               </Link>
             </nav>
           </div>
@@ -59,9 +35,9 @@ export default function LandingPage() {
               VC-scenario provides institutional-grade tools for venture capitalists to model, benchmark, and visualize fund performance with unparalleled precision.
             </p>
             <div className="mt-8">
-              <Link href="/login">
+              <Link href="/dashboard">
                 <Button size="lg">
-                  Get Started for Free <ArrowRight className="ml-2 h-5 w-5" />
+                  Get Started <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
             </div>

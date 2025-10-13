@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Calculator, TrendingUp, DollarSign, Target, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calculator, TrendingUp, Target, DollarSign } from 'lucide-react';
 import { initialScenarios, initialBenchmarks, initialWaterfall } from '@/app/data';
 import type { Scenario, Benchmark, Waterfall } from '@/lib/types';
 import Header from '@/components/venture-flow/header';
@@ -10,10 +9,6 @@ import ScenarioModeling from '@/components/venture-flow/scenario-modeling';
 import Benchmarking from '@/components/venture-flow/benchmarking';
 import WaterfallAnalysis from '@/components/venture-flow/waterfall-analysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUser, useAuth } from '@/firebase';
-import { Button } from '@/components/ui/button';
-import { signOut } from 'firebase/auth';
-
 
 const TABS = [
   { id: 'scenarios', label: 'Scenario Modeling', icon: TrendingUp },
@@ -26,17 +21,6 @@ export default function VentureFlowPage() {
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>(initialBenchmarks);
   const [waterfall, setWaterfall] = useState<Waterfall[]>(initialWaterfall);
   const [selectedScenario, setSelectedScenario] = useState<string>('Base Case');
-  
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
-
 
   const updateScenario = (index: number, field: keyof Scenario, value: string) => {
     const newScenarios = [...scenarios];
@@ -52,33 +36,10 @@ export default function VentureFlowPage() {
     setBenchmarks(newBenchmarks);
   };
 
-  const handleSignOut = async () => {
-    if (!auth) return;
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error('Error signing out: ', error);
-    }
-  };
-  
-  if (isUserLoading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-start">
-          <Header />
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" /> Sign Out
-          </Button>
-        </div>
+        <Header />
         <Tabs defaultValue="scenarios" className="w-full mt-8">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 max-w-2xl mx-auto h-auto sm:h-12">
             {TABS.map((tab) => {
