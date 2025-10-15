@@ -1,12 +1,11 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import VCScenarioApp from "@/components/VCScenarioApp";
+import VCScenarioApp from "./VCScenarioApp";
 
 export default function DashboardPage() {
-  const { status } = useSession();
-  if (status === "loading") {
-    return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
-  }
-  return <VCScenarioApp />;
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <VCScenarioApp />
+    </main>
+  );
 }
