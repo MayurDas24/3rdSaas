@@ -1,13 +1,14 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import prisma from "@/lib/prisma";
-import { compare } from "bcryptjs";
+import bcrypt from "bcrypt";
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -20,44 +21,23 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) return null;
-
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-          });
-          
-          if (!user || !user.password) return null;
-
-          const isValid = await compare(credentials.password, user.password);
-          if (!isValid) return null;
-
-          return { 
-            id: user.id.toString(), 
-            email: user.email,
-            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email
-          };
-        } catch (error) {
-          console.error("Auth error:", error);
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
+        const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+        if (!user || !user.password) return null;
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+        if (!isValid) return null;
+        return { id: user.id, name: user.name, email: user.email };
       },
     }),
   ],
-  pages: {
-    signIn: "/signin",
-  },
+  pages: { signIn: "/signin" },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
+      if (user) token.userId = user.id;
       return token;
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        (session.user as any).id = token.id as string;
-      }
+      session.user.id = token.userId;
       return session;
     },
   },

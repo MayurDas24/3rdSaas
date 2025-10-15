@@ -1,15 +1,17 @@
-// PASTE THIS INTO: src/app/layout.tsx
+import "./globals.css";
+import NextAuthProvider from "./providers";
 
 export const metadata = {
-  title: 'VC Scenario SaaS',
-  description: 'The Future of Fund Forecasting',
+  title: "VC Scenario Tool",
+  description: "Analyze investment scenarios and benchmark performance.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <NextAuthProvider>{children}</NextAuthProvider>
+      </body>
     </html>
   );
 }
-
