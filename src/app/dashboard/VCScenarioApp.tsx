@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import React, { useState, useRef } from "react";
 import {
   BarChart,
@@ -34,6 +34,7 @@ const VCScenarioApp = () => {
   const [expanded, setExpanded] = useState<string | null>("Base Case");
   const [currency, setCurrency] = useState("");
   const pdfRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // ---------- DATA ----------
   const [scenarios, setScenarios] = useState([
@@ -142,29 +143,35 @@ const VCScenarioApp = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#eef3fc]">
       {/* HEADER */}
-      <div className="sticky top-0 bg-white shadow-sm py-4 px-6 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-[#1e3a8a] rounded-lg">
-            <Calculator className="text-white w-6 h-6" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">VC Scenario Benchmarking Tool</h1>
-        </div>
+  <div className="sticky top-0 bg-white shadow-sm py-4 px-6 flex justify-between items-center">
+  <div
+    className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition"
+    onClick={() => router.push("/")}
+  >
+    <div className="p-3 bg-[#1e3a8a] rounded-lg hover:bg-[#162c6e] transition">
+      <Calculator className="text-white w-6 h-6" />
+    </div>
+    <h1 className="text-2xl font-bold text-gray-900">
+      VC Scenario Benchmarking Tool
+    </h1>
+  </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={exportPDF}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700"
-          >
-            Download Report
-          </button>
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="bg-[#1e3a8a] text-white px-5 py-2 rounded-lg font-medium hover:bg-[#243b8a]"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
+  <div className="flex gap-3">
+    <button
+      onClick={exportPDF}
+      className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700"
+    >
+      Download Report
+    </button>
+    <button
+      onClick={() => signOut({ callbackUrl: "/" })}
+      className="bg-[#1e3a8a] text-white px-5 py-2 rounded-lg font-medium hover:bg-[#243b8a]"
+    >
+      Logout
+    </button>
+  </div>
+</div>
+
 
       {/* NAV TABS */}
       <div className="border-b border-gray-200">
