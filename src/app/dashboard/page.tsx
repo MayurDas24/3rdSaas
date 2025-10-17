@@ -1,5 +1,4 @@
 "use client";
-
 import VCScenarioApp from "./VCScenarioApp";
 
 export default function DashboardPage() {

@@ -1,16 +1,16 @@
 import "./globals.css";
-import NextAuthProvider from "./providers";
+import Providers from "./providers";
 
 export const metadata = {
-  title: "VC Scenario Tool",
-  description: "Analyze investment scenarios and benchmark performance.",
+  title: "VC-scenario",
+  description: "VC scenario SaaS",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <NextAuthProvider>{children}</NextAuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

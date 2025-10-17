@@ -1,75 +1,30 @@
-import { PrismaClient } from "@prisma/client";
-import { hash } from "bcryptjs";
-import Razorpay from "razorpay";
 import { NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
-
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+import bcrypt from "bcryptjs";
+import prisma from "../../../lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { firstName, lastName, contact, email, password } = body;
+    const { name, lastName, contact, email, password } = await req.json();
+    if (!name || !email || !password) return NextResponse.json({ message: "Missing fields" }, { status: 400 });
 
-    // ✅ Validation
-    if (!firstName || !lastName || !email || !password || !contact) {
-      return NextResponse.json(
-        { message: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+    const exists = await prisma.user.findUnique({ where: { email } });
+    if (exists) return NextResponse.json({ message: "User already exists. Try Sign In." }, { status: 409 });
 
-    // ✅ Check for existing user
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json(
-        { message: "User already exists" },
-        { status: 400 }
-      );
-    }
+    const hashed = await bcrypt.hash(password, 10);
 
-    // ✅ Hash password
-    const hashedPassword = await hash(password, 10);
-    const name = `${firstName} ${lastName}`.trim();
-
-    // ✅ Create user (not premium yet)
-    const newUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
-        name,
+        name: `${name} ${lastName || ""}`.trim(),
         email,
-        password: hashedPassword,
         contact,
+        password: hashed,
         isPremium: false,
       },
     });
 
-    // ✅ Create Razorpay Order
-    const order = await razorpay.orders.create({
-      amount: 49900, // ₹499.00
-      currency: "INR",
-      receipt: `receipt_${newUser.id}`,
-      notes: { userId: newUser.id },
-    });
-
-    return NextResponse.json(
-      {
-        message: "User created successfully",
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        key: process.env.RAZORPAY_KEY_ID,
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error("REGISTER ERROR:", error);
-    return NextResponse.json(
-      { message: "Internal Server Error", error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Register error:", err);
+    return NextResponse.json({ message: "Internal error" }, { status: 500 });
   }
 }
