@@ -1,6 +1,7 @@
 "use client";
-import { useRouter } from "next/navigation";
-import React, { useState, useRef } from "react";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useRef, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -23,38 +24,45 @@ import {
   Target,
   AlertTriangle,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 const VCScenarioApp = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+
+  // Determine mode
+  const mode = searchParams.get("mode");
+  const isFreeMode = mode === "free" || !session?.user?.isPremium;
+
   // ---------- STATE ----------
   const [activeTab, setActiveTab] = useState("scenarios");
   const [selectedScenario, setSelectedScenario] = useState("Base Case");
   const [expanded, setExpanded] = useState<string | null>("Base Case");
   const [currency, setCurrency] = useState("");
   const pdfRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   // ---------- DATA ----------
   const [scenarios, setScenarios] = useState([
-    { scenario: "Base Case", exitMultiple: 0, winners: 0, neutrals: 0, writeOffs: 0, tvpi: 0, irr: 0 },
-    { scenario: "Upside Case", exitMultiple: 0, winners: 0, neutrals: 0, writeOffs: 0, tvpi: 0, irr: 0 },
-    { scenario: "Downside Case", exitMultiple: 0, winners: 0, neutrals: 0, writeOffs: 0, tvpi: 0, irr: 0 },
+    { scenario: "Base Case", exitMultiple: 2, winners: 6, neutrals: 9, writeOffs: 5, tvpi: 1.05, irr: 0.6 },
+    { scenario: "Upside Case", exitMultiple: 5, winners: 8, neutrals: 7, writeOffs: 5, tvpi: 2.35, irr: 13 },
+    { scenario: "Downside Case", exitMultiple: 1.2, winners: 4, neutrals: 6, writeOffs: 10, tvpi: 0.54, irr: -6.6 },
   ]);
 
   const [benchmarks, setBenchmarks] = useState([
-    { metric: "IRR (%)", fundPerformance: 0, peerMedian: 0, topQuartile: 0 },
-    { metric: "TVPI", fundPerformance: 0, peerMedian: 0, topQuartile: 0 },
-    { metric: "DPI", fundPerformance: 0, peerMedian: 0, topQuartile: 0 },
-    { metric: "Burn Multiple", fundPerformance: 0, peerMedian: 0, topQuartile: 0 },
+    { metric: "IRR (%)", fundPerformance: 15, peerMedian: 12, topQuartile: 20 },
+    { metric: "TVPI", fundPerformance: 2.2, peerMedian: 2.0, topQuartile: 2.8 },
+    { metric: "DPI", fundPerformance: 1.5, peerMedian: 1.3, topQuartile: 2.0 },
+    { metric: "Burn Multiple", fundPerformance: 1.2, peerMedian: 1.6, topQuartile: 1.3 },
   ]);
 
   const [waterfall, setWaterfall] = useState([
-    { year: 1, lpDistribution: 0, gpDistribution: 0, lpCumulative: 0, gpCumulative: 0 },
-    { year: 2, lpDistribution: 0, gpDistribution: 0, lpCumulative: 0, gpCumulative: 0 },
-    { year: 3, lpDistribution: 0, gpDistribution: 0, lpCumulative: 0, gpCumulative: 0 },
-    { year: 4, lpDistribution: 0, gpDistribution: 0, lpCumulative: 0, gpCumulative: 0 },
+    { year: 5, lpDistribution: 40000000, gpDistribution: 0, lpCumulative: 40000000, gpCumulative: 0 },
+    { year: 6, lpDistribution: 32327476, gpDistribution: 17672524, lpCumulative: 72327476, gpCumulative: 17672524 },
+    { year: 7, lpDistribution: 50938020, gpDistribution: 29061980, lpCumulative: 123265495, gpCumulative: 46734505 },
+    { year: 8, lpDistribution: 48000000, gpDistribution: 12000000, lpCumulative: 171265495, gpCumulative: 58734505 },
   ]);
 
   // ---------- UTILS ----------
@@ -62,7 +70,7 @@ const VCScenarioApp = () => {
     winners: "#10b981",
     neutrals: "#f59e0b",
     writeOffs: "#ef4444",
-    fundPerformance: "#1e3a8a",
+    fundPerformance: "#3b82f6",
     peerMedian: "#6b7280",
     topQuartile: "#10b981",
   };
@@ -76,11 +84,9 @@ const VCScenarioApp = () => {
   };
 
   const getSymbol = () => currencySymbols[currency] || "$";
-
   const formatCurrency = (v: number) =>
     `${getSymbol()}${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v)}`;
 
-  // ---------- FUNCTIONS ----------
   const getPortfolioComposition = () => {
     const s = scenarios.find((x) => x.scenario === selectedScenario);
     if (!s) return [];
@@ -93,6 +99,7 @@ const VCScenarioApp = () => {
     ];
   };
 
+  // ---------- HANDLERS ----------
   const updateScenario = (i: number, field: string, value: any) => {
     const updated = [...scenarios];
     updated[i][field] = parseFloat(value) || 0;
@@ -108,8 +115,6 @@ const VCScenarioApp = () => {
   const updateWaterfall = (i: number, field: string, value: any) => {
     const updated = [...waterfall];
     updated[i][field] = parseFloat(value) || 0;
-
-    // Update cumulative
     let lpC = 0,
       gpC = 0;
     updated.forEach((w) => {
@@ -122,58 +127,65 @@ const VCScenarioApp = () => {
   };
 
   const exportPDF = async () => {
+    if (isFreeMode) {
+      router.push("/checkout");
+      return;
+    }
+
     const content = pdfRef.current;
     if (!content) return;
+
     const canvas = await html2canvas(content, { scale: 2 });
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
     const width = 190;
     const height = (canvas.height * width) / canvas.width;
     pdf.addImage(imgData, "PNG", 10, 10, width, height);
-    const file =
-      activeTab === "scenarios"
-        ? "Scenario_Report.pdf"
-        : activeTab === "benchmarking"
-        ? "Benchmark_Report.pdf"
-        : "Waterfall_Report.pdf";
-    pdf.save(file);
+    pdf.save(`${activeTab}_Report.pdf`);
   };
 
-  // ---------- UI ----------
+  // ---------- RENDER ----------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#eef3fc]">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* HEADER */}
-  <div className="sticky top-0 bg-white shadow-sm py-4 px-6 flex justify-between items-center">
-  <div
-    className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition"
-    onClick={() => router.push("/")}
-  >
-    <div className="p-3 bg-[#1e3a8a] rounded-lg hover:bg-[#162c6e] transition">
-      <Calculator className="text-white w-6 h-6" />
-    </div>
-    <h1 className="text-2xl font-bold text-gray-900">
-      VC Scenario Benchmarking Tool
-    </h1>
-  </div>
+      <div className="sticky top-0 bg-white shadow-sm py-4 px-6 flex justify-between items-center">
+        <div
+          className="flex items-center gap-3 cursor-pointer hover:opacity-90 transition"
+          onClick={() => router.push("/")}
+        >
+          <div className="p-3 bg-blue-600 rounded-lg">
+            <Calculator className="text-white w-6 h-6" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            VC Scenario Benchmarking Tool
+          </h1>
+        </div>
 
-  <div className="flex gap-3">
-    <button
-      onClick={exportPDF}
-      className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700"
-    >
-      Download Report
-    </button>
-    <button
-      onClick={() => signOut({ callbackUrl: "/" })}
-      className="bg-[#1e3a8a] text-white px-5 py-2 rounded-lg font-medium hover:bg-[#243b8a]"
-    >
-      Logout
-    </button>
-  </div>
-</div>
+        <div className="flex gap-3">
+          <button
+            onClick={exportPDF}
+            disabled={isFreeMode}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              isFreeMode
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-green-600 text-white hover:bg-green-700"
+            }`}
+          >
+            {isFreeMode ? "Upgrade to Download" : "Download Report"}
+          </button>
 
+          {session && (
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="bg-blue-800 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-900"
+            >
+              Logout
+            </button>
+          )}
+        </div>
+      </div>
 
-      {/* NAV TABS */}
+      {/* NAVIGATION */}
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8 container mx-auto px-6">
           {[
@@ -186,9 +198,9 @@ const VCScenarioApp = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition ${
                   activeTab === tab.id
-                    ? "border-[#1e3a8a] text-[#1e3a8a]"
+                    ? "border-blue-600 text-blue-700"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
@@ -200,12 +212,11 @@ const VCScenarioApp = () => {
         </nav>
       </div>
 
-      {/* MAIN BODY */}
+      {/* MAIN CONTENT */}
       <div ref={pdfRef} className="container mx-auto px-6 py-8 space-y-10">
-        {/* 1️⃣ SCENARIO MODELING */}
+        {/* SCENARIO MODELING */}
         {activeTab === "scenarios" && (
           <div className="space-y-8">
-            {/* Select */}
             <div className="bg-white rounded-xl p-6 border">
               <h2 className="text-xl font-semibold mb-4">Select Scenario</h2>
               <div className="flex gap-3">
@@ -215,7 +226,7 @@ const VCScenarioApp = () => {
                     onClick={() => setSelectedScenario(s.scenario)}
                     className={`px-4 py-2 rounded-lg ${
                       selectedScenario === s.scenario
-                        ? "bg-[#1e3a8a] text-white"
+                        ? "bg-blue-600 text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
@@ -225,9 +236,8 @@ const VCScenarioApp = () => {
               </div>
             </div>
 
-            {/* Parameters + Charts */}
             <div className="grid lg:grid-cols-2 gap-8">
-              {/* Inputs */}
+              {/* Parameters */}
               <div className="bg-white rounded-xl p-6 border">
                 <h2 className="text-xl font-semibold mb-6">Scenario Parameters</h2>
                 {scenarios.map((s, i) => (
@@ -254,7 +264,7 @@ const VCScenarioApp = () => {
                                 type="number"
                                 value={v as number}
                                 onChange={(e) => updateScenario(i, f, e.target.value)}
-                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#1e3a8a]"
+                                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-600"
                               />
                             </div>
                           ))}
@@ -312,7 +322,7 @@ const VCScenarioApp = () => {
           </div>
         )}
 
-        {/* 2️⃣ BENCHMARKING */}
+        {/* BENCHMARKING */}
         {activeTab === "benchmarking" && (
           <div className="space-y-8">
             <div className="grid lg:grid-cols-2 gap-8">
@@ -331,7 +341,7 @@ const VCScenarioApp = () => {
                             type="number"
                             value={b[f as keyof typeof b]}
                             onChange={(e) => updateBenchmark(i, f, e.target.value)}
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-[#1e3a8a]"
+                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-600"
                           />
                         </div>
                       ))}
@@ -358,197 +368,32 @@ const VCScenarioApp = () => {
                 </div>
               </div>
             </div>
-
-            {/* Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {benchmarks.map((b, i) => {
-                const up = b.fundPerformance > b.peerMedian;
-                return (
-                  <div key={i} className="bg-white rounded-lg shadow-sm p-4 border">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{b.metric}</h4>
-                      {up ? (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <AlertTriangle className="w-4 h-4 text-red-600" />
-                      )}
-                    </div>
-                    <div className="text-2xl font-bold">
-                      {b.metric.includes("%") ? `${b.fundPerformance}%` : b.fundPerformance}
-                    </div>
-                    <p className={`text-sm ${up ? "text-green-600" : "text-red-600"}`}>
-                      {up
-                        ? `Above peer median of ${b.peerMedian}`
-                        : `Below peer median of ${b.peerMedian}`}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         )}
 
-        {/* 3️⃣ WATERFALL */}
+        {/* WATERFALL */}
         {activeTab === "waterfall" && (
-         <div className="space-y-8">
-  {/* Currency */}
-  <div className="bg-white rounded-xl p-6 border">
-    <h2 className="text-xl font-semibold mb-4">Select Currency</h2>
-    <select
-      value={currency}
-      onChange={(e) => setCurrency(e.target.value)}
-      className="p-3 border rounded w-64 focus:ring-2 focus:ring-[#1e3a8a]"
-    >
-      <option value="">-- Choose Currency --</option>
-      <option value="USD">USD ($)</option>
-      <option value="INR">INR (₹)</option>
-      <option value="GBP">Pound (£)</option>
-      <option value="AED">Dirham (د.إ)</option>
-      <option value="EUR">Euro (€)</option>
-    </select>
-    {!currency && (
-      <p className="text-sm text-red-500 mt-2">
-        Please select a currency to enable editing.
-      </p>
-    )}
-  </div>
-
-  {/* Table + Graphs */}
-  <div className="grid lg:grid-cols-2 gap-8">
-    {/* Table */}
-    <div className="bg-white rounded-xl p-6 border">
-      <h2 className="text-xl font-semibold mb-6">Distribution Schedule</h2>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b">
-            <th className="text-left py-2">Year</th>
-            <th className="text-right py-2">LP Distribution</th>
-            <th className="text-right py-2">GP Distribution</th>
-          </tr>
-        </thead>
-        <tbody>
-          {waterfall.map((w, i) => (
-            <tr key={i} className="border-b">
-              <td className="py-2 font-medium">{w.year}</td>
-              <td className="text-right py-2">
-                {currency ? (
-                  <input
-                    type="number"
-                    value={w.lpDistribution}
-                    onChange={(e) =>
-                      updateWaterfall(i, "lpDistribution", e.target.value)
-                    }
-                    className="text-right p-1 border border-gray-300 rounded w-28"
-                  />
-                ) : (
-                  formatCurrency(w.lpDistribution)
-                )}
-              </td>
-              <td className="text-right py-2">
-                {currency ? (
-                  <input
-                    type="number"
-                    value={w.gpDistribution}
-                    onChange={(e) =>
-                      updateWaterfall(i, "gpDistribution", e.target.value)
-                    }
-                    className="text-right p-1 border border-gray-300 rounded w-28"
-                  />
-                ) : (
-                  formatCurrency(w.gpDistribution)
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Summary */}
-      <div className="mt-6 pt-4 border-t border-gray-200 grid grid-cols-2 gap-4">
-        <div className="bg-indigo-50 p-3 rounded-lg">
-          <div className="text-sm font-medium text-indigo-700">
-            Total LP Distribution
+          <div className="space-y-8">
+            <div className="bg-white rounded-xl p-6 border">
+              <h2 className="text-xl font-semibold mb-4">Select Currency</h2>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="p-3 border rounded w-64 focus:ring-2 focus:ring-blue-600"
+              >
+                <option value="">-- Choose Currency --</option>
+                <option value="USD">USD ($)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="GBP">Pound (£)</option>
+                <option value="AED">Dirham (د.إ)</option>
+                <option value="EUR">Euro (€)</option>
+              </select>
+            </div>
           </div>
-          <div className="text-xl font-bold text-indigo-900">
-            {formatCurrency(
-              waterfall[waterfall.length - 1]?.lpCumulative || 0
-            )}
-          </div>
-        </div>
-        <div className="bg-green-50 p-3 rounded-lg">
-          <div className="text-sm font-medium text-green-700">
-            Total GP Distribution
-          </div>
-          <div className="text-xl font-bold text-green-900">
-            {formatCurrency(
-              waterfall[waterfall.length - 1]?.gpCumulative || 0
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Cumulative Chart */}
-    <div className="bg-white rounded-xl p-6 border">
-      <h2 className="text-xl font-semibold mb-6">Cumulative Distributions</h2>
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={waterfall}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="year" />
-            <YAxis
-              tickFormatter={(v) => `${getSymbol()}${(v / 1000000).toFixed(0)}M`}
-            />
-            <Tooltip formatter={(v) => formatCurrency(v as number)} />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="lpCumulative"
-              stroke="#1e3a8a"
-              strokeWidth={3}
-              dot={{ r: 5 }}
-              name="LP Cumulative"
-            />
-            <Line
-              type="monotone"
-              dataKey="gpCumulative"
-              stroke="#10b981"
-              strokeWidth={3}
-              dot={{ r: 5 }}
-              name="GP Cumulative"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  </div>
-
-  {/* Annual Breakdown Chart */}
-  <div className="bg-white rounded-xl p-6 border">
-    <h2 className="text-xl font-semibold mb-6">
-      Annual Distribution Breakdown
-    </h2>
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={waterfall}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="year" />
-          <YAxis
-            tickFormatter={(v) => `${getSymbol()}${(v / 1000000).toFixed(0)}M`}
-          />
-          <Tooltip formatter={(v) => formatCurrency(v as number)} />
-          <Legend />
-          <Bar dataKey="lpDistribution" fill="#1e3a8a" name="LP Distribution" />
-          <Bar dataKey="gpDistribution" fill="#10b981" name="GP Distribution" />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-</div>
         )}
       </div>
     </div>
   );
-}
-        
+};
+
 export default VCScenarioApp;

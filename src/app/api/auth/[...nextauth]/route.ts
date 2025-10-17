@@ -1,95 +1,49 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
+import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter"; // ✅ correct import
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
-// ✅ Define options with full typing and consistent config
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
   providers: [
-    // ✅ Google OAuth provider
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-
-    // ✅ Credentials provider for manual login
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text", placeholder: "you@example.com" },
+        email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          console.error("Missing credentials");
-          return null;
-        }
+      async authorize(credentials: any) {
+        if (!credentials?.email || !credentials?.password) return null;
 
-        // Find user by email
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
 
-        if (!user) {
-          console.error("User not found");
-          return null;
-        }
+        if (!user) return null;
 
-        if (!user.password) {
-          console.error("User has no password (Google signup?)");
-          return null;
-        }
+        const valid = await bcrypt.compare(credentials.password, user.password || "");
+        if (!valid) return null;
 
-        // Verify password
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) {
-          console.error("Invalid password");
-          return null;
-        }
-
-        // ✅ Return user info for JWT/session
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        };
+        return user;
       },
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
-
-  // ✅ Redirect unauthenticated users to /signin
-  pages: {
-    signIn: "/signin",
-  },
-
-  // ✅ Custom callbacks for handling JWT & session user data
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.userId = user.id;
-      }
-      return token;
-    },
-
-    async session({ session, token }) {
-      if (token?.userId) {
-        session.user.id = token.userId as string;
-      }
+    async session({ session, user }: any) {
+      session.user.id = user.id;
+      session.user.isPremium = user.isPremium;
       return session;
     },
   },
-
-  // ✅ Debug mode (optional, helps in development)
-  debug: process.env.NODE_ENV === "development",
+  session: { strategy: "jwt" },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
-// ✅ Define handler and export both GET & POST methods
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

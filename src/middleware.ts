@@ -1,15 +1,19 @@
+import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
-export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  const isAuth = !!token;
+export default async function middleware(req) {
+  const url = req.nextUrl;
 
-  if (req.nextUrl.pathname.startsWith("/dashboard") && !isAuth) {
-    const url = new URL("/signin", req.url);
-    url.searchParams.set("callbackUrl", req.nextUrl.pathname);
-    return NextResponse.redirect(url);
+  // ✅ Allow free explore mode without auth
+  if (url.pathname.startsWith("/dashboard") && url.searchParams.get("mode") === "free") {
+    return NextResponse.next();
+  }
+
+  // ✅ Protect premium dashboard only
+  if (url.pathname.startsWith("/dashboard")) {
+    return withAuth({
+      pages: { signIn: "/signin" },
+    })(req);
   }
 
   return NextResponse.next();
