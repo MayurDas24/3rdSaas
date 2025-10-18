@@ -1,37 +1,31 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      // If user is not signed in (e.g., came via Google first time),
-      // create/find user by token email? NextAuth creates on Google sign-in already.
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
+    const body = await req.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, email } = body;
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await req.json();
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
+    const sign = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSign = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
-      .update(body.toString())
+      .update(sign)
       .digest("hex");
 
-    if (expectedSignature !== razorpay_signature) {
-      return NextResponse.json({ success: false }, { status: 400 });
+    if (expectedSign !== razorpay_signature) {
+      return NextResponse.json({ message: "Invalid signature" }, { status: 400 });
     }
 
+    // Mark user as premium
     await prisma.user.update({
-      where: { email: session.user.email! },
+      where: { email },
       data: { isPremium: true },
     });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Verify payment error:", error);
-    return NextResponse.json({ message: "Error verifying payment" }, { status: 500 });
+    return NextResponse.json({ message: "Payment verified successfully" });
+  } catch (error: any) {
+    console.error("Verification error:", error);
+    return NextResponse.json({ message: "Verification failed" }, { status: 500 });
   }
 }

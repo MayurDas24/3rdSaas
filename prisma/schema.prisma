@@ -21,10 +21,15 @@ model User {
 
   accounts Account[]
   sessions Session[]
+
+  // 👇 NEW RELATION FIELDS (fix for your error)
+  scenarios  Scenario[]
+  benchmarks Benchmark[]
+  waterfalls Waterfall[]
 }
 
 model Account {
-  id                String   @id @default(cuid())
+  id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -57,4 +62,38 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Scenario {
+  id           String @id @default(cuid())
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  exitMultiple Float
+  winners      Int
+  neutrals     Int
+  writeOffs    Int
+  tvpi         Float
+  irr          Float
+}
+
+model Benchmark {
+  id              String @id @default(cuid())
+  userId          String
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metric          String
+  fundPerformance Float
+  peerMedian      Float
+  topQuartile     Float
+}
+
+model Waterfall {
+  id             String @id @default(cuid())
+  userId         String
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year           Int
+  lpDistribution Float
+  gpDistribution Float
+  lpCumulative   Float
+  gpCumulative   Float
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,10 +33,23 @@ const VCScenarioApp = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const [isPremium, setIsPremium] = useState<boolean>(!!session?.user?.isPremium); 
+  React.useEffect(() => {
+  const fetchPremiumStatus = async () => {
+    try {
+      const res = await fetch("/api/user/status");
+      const data = await res.json();
+      setIsPremium(data.isPremium);
+    } catch (err) {
+      console.error("Failed to check premium:", err);
+    }
+  };
+  fetchPremiumStatus();
+}, []); 
 
   // Free explore when ?mode=free OR when user not premium.
   const mode = searchParams.get("mode");
-  const isFreeMode = mode === "free" || !session?.user?.isPremium;
+  const isFreeMode = mode === "free" || !isPremium;
 
   // ---------- STATE ----------
   const [activeTab, setActiveTab] = useState<"scenarios" | "benchmarking" | "waterfall">("scenarios");

@@ -4,51 +4,54 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const params = useSearchParams();
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") || "";
 
   useEffect(() => {
-    const run = async () => {
+    const initPayment = async () => {
       try {
-        const orderRes = await fetch("/api/razorpay/order", { method: "POST" });
-        const { order } = await orderRes.json();
-        if (!order) throw new Error("Order creation failed");
+        const res = await fetch("/api/razorpay/order", { method: "POST" });
+        const data = await res.json();
 
-        const options = {
+        if (!res.ok || !data.order) throw new Error(data.message || "Order creation failed");
+
+        const order = data.order;
+
+        const options: any = {
           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: order.amount,
           currency: order.currency,
-          name: "VC-scenario Premium",
-          description: "Unlock full access",
+          name: "VC Scenario Premium",
+          description: "Unlock premium dashboard access",
           order_id: order.id,
-          handler: async function (response: any) {
-            const verifyRes = await fetch("/api/razorpay/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(response),
-            });
-            if (verifyRes.ok) {
-              router.push("/dashboard");
-            } else {
-              alert("Payment verification failed!");
-            }
+          handler: async (response: any) => {
+            alert("✅ Payment successful!");
+            router.push("/dashboard?mode=premium");
           },
+          prefill: { email },
           theme: { color: "#1e3a8a" },
         };
 
-        // @ts-ignore
-        const rz = new window.Razorpay(options);
-        rz.open();
-      } catch (e) {
-        console.error(e);
-        alert("Unable to start checkout.");
+        if (!(window as any).Razorpay) {
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => new (window as any).Razorpay(options).open();
+          document.body.appendChild(script);
+        } else {
+          new (window as any).Razorpay(options).open();
+        }
+      } catch (err) {
+        console.error("❌ Checkout error:", err);
+        alert("Could not open checkout. Try again.");
       }
     };
-    run();
-  }, [router, params]);
+
+    initPayment();
+  }, [email, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-800">
-      <h1 className="text-xl font-semibold">Opening Razorpay secure checkout…</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <h1 className="text-lg text-gray-700">Opening Razorpay secure checkout…</h1>
     </div>
   );
 }
